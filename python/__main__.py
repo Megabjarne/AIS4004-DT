@@ -2,6 +2,7 @@ import argparse
 import pandas
 from pathlib import Path
 
+# Test A
 
 def load_data(path: Path) -> pandas.DataFrame:
     return pandas.read_csv(path)
@@ -32,3 +33,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
