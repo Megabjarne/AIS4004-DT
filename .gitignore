@@ -51,3 +51,6 @@ docs/_build/
 
 # data
 *.csv
+
+# not sure
+.vs/
