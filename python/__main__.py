@@ -1,6 +1,8 @@
 import argparse
 import pandas
 from pathlib import Path
+from scipy import stats
+import numpy as np
 
 
 def load_data(path: Path) -> pandas.DataFrame:
@@ -8,8 +10,19 @@ def load_data(path: Path) -> pandas.DataFrame:
 
 
 def prepare_data(data: pandas.DataFrame) -> pandas.DataFrame:
-    # TODO: implement this
-    raise NotImplementedError()
+    # remove rows with null values
+    data = data[data.notnull().all(axis=1)]
+
+    # remove consecutive duplicates
+    not_duplicate = data.diff(-1).any(axis=1)
+    not_duplicate[not_duplicate.size-1] = True
+    data = data[not_duplicate.values]
+
+    # remove outliers
+    non_static_columns = data.diff(-1).any(axis=0)
+    data = data[(np.abs(stats.zscore(data[data.columns[non_static_columns]])) < 3).all(axis=1)]
+
+    return data
 
 
 def parse_arguments() -> argparse.Namespace:
