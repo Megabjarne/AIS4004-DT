@@ -7,7 +7,7 @@ def load_data(path: Path) -> pandas.DataFrame:
     return pandas.read_csv(path)
 
 
-def parse_arguments() -> argparse.NameSpace:
+def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--data", type=Path, default="data.csv", help="path to the csv file with data"
