@@ -1,3 +1,4 @@
+import argparse
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -5,61 +6,134 @@ from pathlib import Path
 from scipy import stats
 import numpy as np
 
+
 def load_data(path: Path) -> pd.DataFrame:
-    """Load the dataset from a CSV file."""
     return pd.read_csv(path)
 
-def remove_consecutive_duplicates(data: pd.DataFrame) -> pd.DataFrame:
-    """Remove consecutive duplicate rows."""
-    return data.loc[(data != data.shift()).any(axis=1)]
 
-def remove_outliers(data: pd.DataFrame, z_threshold: float = 3.0) -> pd.DataFrame:
-    """Remove rows with outliers based on z-scores for all numeric columns."""
-    numeric_cols = data.select_dtypes(include=[np.number]).columns
-    z_scores = np.abs(stats.zscore(data[numeric_cols]))
-    return data[(z_scores < z_threshold).all(axis=1)]
+def prepare_data(data: pd.DataFrame, method="IQR") -> pd.DataFrame:
+    # Strip whitespace from column names
+    data.columns = data.columns.str.strip()
 
-def prepare_data(data: pd.DataFrame, z_threshold: float = 3.0) -> pd.DataFrame:
-    """Clean the dataset by removing duplicates and outliers."""
-    data = remove_consecutive_duplicates(data)
-    data = remove_outliers(data, z_threshold=z_threshold)
+    # Remove rows with null values
+    data = data[data.notnull().all(axis=1)]
+
+    # Remove consecutive duplicates
+    not_duplicate = data.diff(-1).any(axis=1)
+    not_duplicate[not_duplicate.size - 1] = True
+    data = data[not_duplicate.values]
+
+    # Identify and drop constant columns
+    constant_columns = [col for col in data.columns if data[col].nunique() == 1]
+    if constant_columns:
+        print(f"Constant columns detected and dropped: {constant_columns}")
+        data = data.drop(columns=constant_columns)
+
+    # Remove outliers
+    if method == "IQR":
+        Q1 = data.quantile(0.25)
+        Q3 = data.quantile(0.75)
+        IQR = Q3 - Q1
+        data = data[~((data < (Q1 - 1.5 * IQR)) | (data > (Q3 + 1.5 * IQR))).any(axis=1)]
+    elif method == "zscore":
+        data = data[(np.abs(stats.zscore(data.select_dtypes(include=[np.number]))) < 3).all(axis=1)]
+    else:
+        raise ValueError("Invalid outlier detection method. Choose 'IQR' or 'zscore'.")
+
     return data
 
-def visualize_data(data: pd.DataFrame):
-    """Generate relevant plots to visualize data patterns and outliers."""
-    # Histograms for each numeric column
+
+def parse_arguments() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--data", type=Path, default="data.csv", help="path to the csv file with data"
+    )
+    return parser.parse_args()
+
+
+def visualize_data(data: pd.DataFrame, save_plots=True):
+    # Ensure directory for saving plots
+    output_dir = "plots"
+    if save_plots:
+        Path(output_dir).mkdir(parents=True, exist_ok=True)
+
+    # Histograms for numeric columns
     data.hist(bins=20, figsize=(20, 15))
     plt.suptitle("Histograms of Numeric Features", fontsize=20)
+    if save_plots:
+        plt.savefig(f"{output_dir}/histograms.png")
     plt.show()
 
     # Correlation heatmap
     plt.figure(figsize=(12, 10))
-    correlation = data.corr()
-    sns.heatmap(correlation, annot=True, fmt=".2f", cmap="coolwarm")
-    plt.title("Correlation Heatmap", fontsize=18)
+    sns.heatmap(data.corr(), annot=True, fmt=".2f", cmap="coolwarm")
+    plt.title("Full Feature Correlation Heatmap", fontsize=18)
+    if save_plots:
+        plt.savefig(f"{output_dir}/correlation_heatmap.png")
     plt.show()
 
-    # Boxplots for detecting outliers
-    numeric_cols = data.select_dtypes(include=[np.number]).columns
-    for col in numeric_cols:
+    # Boxplots for outlier detection
+    for col in data.select_dtypes(include=[np.number]).columns:
         plt.figure(figsize=(10, 5))
         sns.boxplot(x=data[col])
         plt.title(f"Boxplot for {col}", fontsize=15)
+        if save_plots:
+            plt.savefig(f"{output_dir}/boxplot_{col.replace('/', '_').replace(' ', '_')}.png")
         plt.show()
 
-    # Pairplot to visualize relationships
-    sns.pairplot(data.sample(min(1000, len(data))), diag_kind="kde")  # Limit to 1000 samples for efficiency
-    plt.suptitle("Pairplot of Features", fontsize=20, y=1.02)
-    plt.show()
+    # Scatter plots for key relationships
+    if 'Gas Turbine (GT) shaft torque (GTT) [kN m]' in data.columns and 'Fuel flow (mf) [kg/s]' in data.columns:
+        plt.figure(figsize=(10, 6))
+        sns.scatterplot(x='Gas Turbine (GT) shaft torque (GTT) [kN m]', y='Fuel flow (mf) [kg/s]', data=data)
+        plt.title("Shaft Torque vs Fuel Flow", fontsize=15)
+        if save_plots:
+            plt.savefig(f"{output_dir}/scatter_torque_vs_fuel.png")
+        plt.show()
 
-#Example of usage:
-# def main() -> None:
-#     data_path = Path("data.csv")  # Example path to data
-#     data = load_data(data_path)
-#     print(f"Loaded {len(data)} rows of data")
-#     clean_data = prepare_data(data)
-#     print(f"Cleaned data contains {len(clean_data)} rows")
-#     visualize_data(clean_data)
+    # Time series plots for decay coefficients
+    if 'GT Compressor decay state coefficient' in data.columns and 'GT Turbine decay state coefficient' in data.columns:
+        plt.figure(figsize=(12, 6))
+        plt.plot(data['GT Compressor decay state coefficient'], label='Compressor Decay Coefficient', marker='o')
+        plt.plot(data['GT Turbine decay state coefficient'], label='Turbine Decay Coefficient', marker='o')
+        plt.title("Decay Coefficients Over Time", fontsize=15)
+        plt.xlabel("Index")
+        plt.ylabel("Decay Coefficient")
+        plt.legend()
+        if save_plots:
+            plt.savefig(f"{output_dir}/decay_coefficients.png")
+        plt.show()
 
-# if __name__ == "__main__":
-#     main()
+
+    sns.pairplot(data[['Fuel flow (mf) [kg/s]', 'Gas Turbine (GT) shaft torque (GTT) [kN m]',
+                   'Port Propeller Torque (Tp) [kN]', 'HP Turbine exit pressure (P48) [bar]']])
+plt.show()
+
+
+def summarize_data(data: pd.DataFrame):
+    print("Summary Statistics:\n")
+    print(data.describe())
+    print("\nMissing Values:\n")
+    print(data.isnull().sum())
+
+    # Ensure the correct column name is used for correlation
+    try:
+        print("\nCorrelation with Fuel Flow (mf):\n")
+        print(data.corr()['Fuel flow (mf) [kg/s]'].sort_values(ascending=False))
+    except KeyError:
+        print("Error: 'Fuel flow (mf) [kg/s]' column not found. Check column names.")
+
+
+def main():
+    args = parse_arguments()
+    data = load_data(args.data)
+    print(f"Loaded {len(data)} rows of data.")
+
+    clean_data = prepare_data(data, method="IQR")
+    print(f"Cleaned data has {len(clean_data)} rows (removed {len(data) - len(clean_data)} rows).")
+
+    summarize_data(clean_data)
+    visualize_data(clean_data)
+
+
+if __name__ == "__main__":
+    main()
