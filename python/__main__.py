@@ -2,7 +2,6 @@ import argparse
 import pandas
 from pathlib import Path
 
-# Test A
 
 def load_data(path: Path) -> pandas.DataFrame:
     return pandas.read_csv(path)
@@ -10,8 +9,8 @@ def load_data(path: Path) -> pandas.DataFrame:
 
 def prepare_data(data: pandas.DataFrame) -> pandas.DataFrame:
     # TODO: implement this
-    raise NotImplementedError()
-
+    #raise NotImplementedError()
+    return data
 
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
@@ -29,6 +28,7 @@ def main() -> None:
     clean_data = prepare_data(data)
     print(f"removed {len(data) - len(clean_data)} rows of data")
     print(data)
+
 
 
 if __name__ == "__main__":
