@@ -18,12 +18,14 @@ def prepare_data(data: pandas.DataFrame) -> pandas.DataFrame:
 
     # remove consecutive duplicates
     not_duplicate = data.diff(-1).any(axis=1)
-    not_duplicate[not_duplicate.size-1] = True
+    not_duplicate[not_duplicate.size - 1] = True
     data = data[not_duplicate.values]
 
     # remove outliers
     non_static_columns = data.diff(-1).any(axis=0)
-    data = data[(np.abs(stats.zscore(data[data.columns[non_static_columns]])) < 3).all(axis=1)]
+    data = data[
+        (np.abs(stats.zscore(data[data.columns[non_static_columns]])) < 3).all(axis=1)
+    ]
 
     return data
 
