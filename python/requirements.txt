@@ -1,2 +1,4 @@
 pandas
 scipy
+asyncpg
+scikit-learn
