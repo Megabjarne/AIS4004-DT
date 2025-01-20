@@ -5,8 +5,11 @@ from scipy import stats
 import numpy as np
 import grafana
 
+
 def load_data(path: Path) -> pandas.DataFrame:
-    return pandas.read_csv(path)
+    data = pandas.read_csv(path)
+    data.columns = list(s.strip() for s in data.columns)
+    return data
 
 
 def prepare_data(data: pandas.DataFrame) -> pandas.DataFrame:
