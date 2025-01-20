@@ -22,7 +22,6 @@ def split_dataset(
     turbine_decay = data["GT Turbine decay state coefficient"] < DECAY_CUTOFF
     del data["GT Compressor decay state coefficient"]
     del data["GT Turbine decay state coefficient"]
-    del data["index"]
 
     training_samples = int(len(data) * 0.7)
 
@@ -45,7 +44,7 @@ def split_dataset(
     )
 
 
-def train_svm(
+def train_svc(
     data: pandas.DataFrame,
 ) -> tuple[tuple[svm.SVC, float], tuple[svm.SVC, float]]:
     (
