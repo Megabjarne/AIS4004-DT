@@ -3,7 +3,7 @@ import pandas
 from pathlib import Path
 from scipy import stats
 import numpy as np
-
+import grafana
 
 def load_data(path: Path) -> pandas.DataFrame:
     return pandas.read_csv(path)
@@ -41,6 +41,8 @@ def main() -> None:
     clean_data = prepare_data(data)
     print(f"removed {len(data) - len(clean_data)} rows of data")
     print(data)
+
+    grafana.push_data_sync(data)
 
 
 if __name__ == "__main__":
