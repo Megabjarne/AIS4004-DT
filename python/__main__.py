@@ -30,6 +30,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--data", type=Path, default="data.csv", help="path to the csv file with data"
     )
+
     return parser.parse_args()
 
 
@@ -41,7 +42,6 @@ def main() -> None:
     clean_data = prepare_data(data)
     print(f"removed {len(data) - len(clean_data)} rows of data")
     print(data)
-
 
 if __name__ == "__main__":
     main()
